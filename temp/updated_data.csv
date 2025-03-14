@@ -1,0 +1,10 @@
+eventType,playerName,runs,age,wickets,playerType
+ODI,ABC123,1000.0,25,171.0,All-Rounder
+TEST,CDE456,100.0,45,100.0,Bowler
+ODI,EFG789,2500.0,24,10.0,Batsman
+TEST,QRS67,100.0,24,100.0,Bowler
+ODI,WSY128,10.0,35,15.0,Bowler
+ODI,abc456,10.0,34,0.0,Bowler
+TEST,abc456,1000.0,34,600.0,All-Rounder
+ODI,bnhg678,4000.0,45,200.0,All-Rounder
+TEST,bnhg678,100.0,45,600.0,Bowler

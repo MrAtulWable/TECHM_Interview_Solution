@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8"/>
+    <title>report.html</title>
+    <link href="assets/style.css" rel="stylesheet" type="text/css"/></head>
+  <body onLoad="init()">
+    <script>/* This Source Code Form is subject to the terms of the Mozilla Public
+ * License, v. 2.0. If a copy of the MPL was not distributed with this file,
+ * You can obtain one at http://mozilla.org/MPL/2.0/. */
+
+
+function toArray(iter) {
+    if (iter === null) {
+        return null;
+    }
+    return Array.prototype.slice.call(iter);
+}
+
+function find(selector, elem) { // eslint-disable-line no-redeclare
+    if (!elem) {
+        elem = document;
+    }
+    return elem.querySelector(selector);
+}
+
+function findAll(selector, elem) {
+    if (!elem) {
+        elem = document;
+    }
+    return toArray(elem.querySelectorAll(selector));
+}
+
+function sortColumn(elem) {
+    toggleSortStates(elem);
+    const colIndex = toArray(elem.parentNode.childNodes).indexOf(elem);
+    let key;
+    if (elem.classList.contains('result')) {
+        key = keyResult;
+    } else if (elem.classList.contains('links')) {
+        key = keyLink;
+    } else {
+        key = keyAlpha;
+    }
+    sortTable(elem, key(colIndex));
+}
+
+function showAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(showExtras);
+}
+
+function hideAllExtras() { // eslint-disable-line no-unused-vars
+    findAll('.col-result').forEach(hideExtras);
+}
+
+function showExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.remove('collapsed');
+    expandcollapse.classList.remove('expander');
+    expandcollapse.classList.add('collapser');
+}
+
+function hideExtras(colresultElem) {
+    const extras = colresultElem.parentNode.nextElementSibling;
+    const expandcollapse = colresultElem.firstElementChild;
+    extras.classList.add('collapsed');
+    expandcollapse.classList.remove('collapser');
+    expandcollapse.classList.add('expander');
+}
+
+function showFilters() {
+    let visibleString = getQueryParameter('visible') || 'all';
+    visibleString = visibleString.toLowerCase();
+    const checkedItems = visibleString.split(',');
+
+    const filterItems = document.getElementsByClassName('filter');
+    for (let i = 0; i < filterItems.length; i++) {
+        filterItems[i].hidden = false;
+
+        if (visibleString != 'all') {
+            filterItems[i].checked = checkedItems.includes(filterItems[i].getAttribute('data-test-result'));
+            filterTable(filterItems[i]);
+        }
+    }
+}
+
+function addCollapse() {
+    // Add links for show/hide all
+    const resulttable = find('table#results-table');
+    const showhideall = document.createElement('p');
+    showhideall.innerHTML = '<a href="javascript:showAllExtras()">Show all details</a> / ' +
+                            '<a href="javascript:hideAllExtras()">Hide all details</a>';
+    resulttable.parentElement.insertBefore(showhideall, resulttable);
+
+    // Add show/hide link to each result
+    findAll('.col-result').forEach(function(elem) {
+        const collapsed = getQueryParameter('collapsed') || 'Passed';
+        const extras = elem.parentNode.nextElementSibling;
+        const expandcollapse = document.createElement('span');
+        if (extras.classList.contains('collapsed')) {
+            expandcollapse.classList.add('expander');
+        } else if (collapsed.includes(elem.innerHTML)) {
+            extras.classList.add('collapsed');
+            expandcollapse.classList.add('expander');
+        } else {
+            expandcollapse.classList.add('collapser');
+        }
+        elem.appendChild(expandcollapse);
+
+        elem.addEventListener('click', function(event) {
+            if (event.currentTarget.parentNode.nextElementSibling.classList.contains('collapsed')) {
+                showExtras(event.currentTarget);
+            } else {
+                hideExtras(event.currentTarget);
+            }
+        });
+    });
+}
+
+function getQueryParameter(name) {
+    const match = RegExp('[?&]' + name + '=([^&]*)').exec(window.location.search);
+    return match && decodeURIComponent(match[1].replace(/\+/g, ' '));
+}
+
+function init () { // eslint-disable-line no-unused-vars
+    resetSortHeaders();
+
+    addCollapse();
+
+    showFilters();
+
+    sortColumn(find('.initial-sort'));
+
+    findAll('.sortable').forEach(function(elem) {
+        elem.addEventListener('click',
+            function() {
+                sortColumn(elem);
+            }, false);
+    });
+}
+
+function sortTable(clicked, keyFunc) {
+    const rows = findAll('.results-table-row');
+    const reversed = !clicked.classList.contains('asc');
+    const sortedRows = sort(rows, keyFunc, reversed);
+    /* Whole table is removed here because browsers acts much slower
+     * when appending existing elements.
+     */
+    const thead = document.getElementById('results-table-head');
+    document.getElementById('results-table').remove();
+    const parent = document.createElement('table');
+    parent.id = 'results-table';
+    parent.appendChild(thead);
+    sortedRows.forEach(function(elem) {
+        parent.appendChild(elem);
+    });
+    document.getElementsByTagName('BODY')[0].appendChild(parent);
+}
+
+function sort(items, keyFunc, reversed) {
+    const sortArray = items.map(function(item, i) {
+        return [keyFunc(item), i];
+    });
+
+    sortArray.sort(function(a, b) {
+        const keyA = a[0];
+        const keyB = b[0];
+
+        if (keyA == keyB) return 0;
+
+        if (reversed) {
+            return keyA < keyB ? 1 : -1;
+        } else {
+            return keyA > keyB ? 1 : -1;
+        }
+    });
+
+    return sortArray.map(function(item) {
+        const index = item[1];
+        return items[index];
+    });
+}
+
+function keyAlpha(colIndex) {
+    return function(elem) {
+        return elem.childNodes[1].childNodes[colIndex].firstChild.data.toLowerCase();
+    };
+}
+
+function keyLink(colIndex) {
+    return function(elem) {
+        const dataCell = elem.childNodes[1].childNodes[colIndex].firstChild;
+        return dataCell == null ? '' : dataCell.innerText.toLowerCase();
+    };
+}
+
+function keyResult(colIndex) {
+    return function(elem) {
+        const strings = ['Error', 'Failed', 'Rerun', 'XFailed', 'XPassed',
+            'Skipped', 'Passed'];
+        return strings.indexOf(elem.childNodes[1].childNodes[colIndex].firstChild.data);
+    };
+}
+
+function resetSortHeaders() {
+    findAll('.sort-icon').forEach(function(elem) {
+        elem.parentNode.removeChild(elem);
+    });
+    findAll('.sortable').forEach(function(elem) {
+        const icon = document.createElement('div');
+        icon.className = 'sort-icon';
+        icon.textContent = 'vvv';
+        elem.insertBefore(icon, elem.firstChild);
+        elem.classList.remove('desc', 'active');
+        elem.classList.add('asc', 'inactive');
+    });
+}
+
+function toggleSortStates(elem) {
+    //if active, toggle between asc and desc
+    if (elem.classList.contains('active')) {
+        elem.classList.toggle('asc');
+        elem.classList.toggle('desc');
+    }
+
+    //if inactive, reset all other functions and add ascending active
+    if (elem.classList.contains('inactive')) {
+        resetSortHeaders();
+        elem.classList.remove('inactive');
+        elem.classList.add('active');
+    }
+}
+
+function isAllRowsHidden(value) {
+    return value.hidden == false;
+}
+
+function filterTable(elem) { // eslint-disable-line no-unused-vars
+    const outcomeAtt = 'data-test-result';
+    const outcome = elem.getAttribute(outcomeAtt);
+    const classOutcome = outcome + ' results-table-row';
+    const outcomeRows = document.getElementsByClassName(classOutcome);
+
+    for(let i = 0; i < outcomeRows.length; i++){
+        outcomeRows[i].hidden = !elem.checked;
+    }
+
+    const rows = findAll('.results-table-row').filter(isAllRowsHidden);
+    const allRowsHidden = rows.length == 0 ? true : false;
+    const notFoundMessage = document.getElementById('not-found-message');
+    notFoundMessage.hidden = !allRowsHidden;
+}
+</script>
+    <h1>report.html</h1>
+    <p>Report generated on 14-Mar-2025 at 00:00:41 by <a href="https://pypi.python.org/pypi/pytest-html">pytest-html</a> v3.2.0</p>
+    <h2>Summary</h2>
+    <p>2 tests ran in 0.10 seconds. </p>
+    <p class="filter" hidden="true">(Un)check the boxes to filter the results.</p><input checked="true" class="filter" data-test-result="passed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="passed">0 passed</span>, <input checked="true" class="filter" data-test-result="skipped" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="skipped">0 skipped</span>, <input checked="true" class="filter" data-test-result="failed" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="failed">2 failed</span>, <input checked="true" class="filter" data-test-result="error" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="error">0 errors</span>, <input checked="true" class="filter" data-test-result="xfailed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xfailed">0 expected failures</span>, <input checked="true" class="filter" data-test-result="xpassed" disabled="true" hidden="true" name="filter_checkbox" onChange="filterTable(this)" type="checkbox"/><span class="xpassed">0 unexpected passes</span>
+    <h2>Results</h2>
+    <table id="results-table">
+      <thead id="results-table-head">
+        <tr>
+          <th class="sortable result initial-sort" col="result">Result</th>
+          <th class="sortable" col="name">Test</th>
+          <th class="sortable" col="duration">Duration</th>
+          <th class="sortable links" col="links">Links</th></tr>
+        <tr hidden="true" id="not-found-message">
+          <th colspan="4">No results found. Try to check the filters</th></tr></thead>
+      <tbody class="failed results-table-row">
+        <tr>
+          <td class="col-result">Failed</td>
+          <td class="col-name">test_data_processor.py::test_schema</td>
+          <td class="col-duration">0.00</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">output_data =   playerName    runs  wickets  age eventType   playerType<br/>0     ABC123  1000.0    171.0   25       ODI  All-Rounder<br/>1 ...der<br/>7    bnhg678  4000.0    200.0   45       ODI  All-Rounder<br/>8    bnhg678   100.0    600.0   45      TEST       Bowler<br/><br/>    def test_schema(output_data):<br/>        &quot;&quot;&quot;<br/>        Test to check if the output data has the correct schema.<br/>        &quot;&quot;&quot;<br/>        for column, dtype in expected_schema.items():<br/>            assert column in output_data.columns, f&quot;Missing column: {column}&quot;<br/>            print(column)<br/>            print(output_data[column].dtype)<br/>&gt;           assert output_data[column].dtype == dtype, f&quot;Incorrect dtype for column: {column}&quot;<br/><span class="error">E           AssertionError: Incorrect dtype for column: eventType</span><br/><span class="error">E           assert dtype(&#x27;O&#x27;) == &lt;class &#x27;str&#x27;&gt;</span><br/><span class="error">E            +  where dtype(&#x27;O&#x27;) = 0     ODI\n1    TEST\n2     ODI\n3    TEST\n4     ODI\n5     ODI\n6    TEST\n7     ODI\n8    TEST\nName: eventType, dtype: object.dtype</span><br/><br/>test_data_processor.py:25: AssertionError<br/> -----------------------------Captured stdout setup------------------------------ <br/>  playerName    runs  wickets  age eventType   playerType
+0     ABC123  1000.0    171.0   25       ODI  All-Rounder
+1     CDE456   100.0    100.0   45      TEST       Bowler
+2     EFG789  2500.0     10.0   24       ODI      Batsman
+3      QRS67   100.0    100.0   24      TEST       Bowler
+4     WSY128    10.0     15.0   35       ODI       Bowler
+5     abc456    10.0      0.0   34       ODI       Bowler
+6     abc456  1000.0    600.0   34      TEST  All-Rounder
+7    bnhg678  4000.0    200.0   45       ODI  All-Rounder
+8    bnhg678   100.0    600.0   45      TEST       Bowler
+<br/> ------------------------------Captured stdout call------------------------------ <br/>eventType
+object
+<br/></div></td></tr></tbody>
+      <tbody class="failed results-table-row">
+        <tr>
+          <td class="col-result">Failed</td>
+          <td class="col-name">test_data_processor.py::test_validate_output</td>
+          <td class="col-duration">0.03</td>
+          <td class="col-links"></td></tr>
+        <tr>
+          <td class="extra" colspan="4">
+            <div class="log">output_data =   playerName eventType  age    runs  wickets   playerType Result<br/>0     ABC123       ODI   25  1000.0    171.0  All-Rou...78       ODI   45  4000.0    200.0  All-Rounder   PASS<br/>5    bnhg678      TEST   45   100.0    600.0       Bowler   FAIL<br/><br/>    def test_validate_output(output_data):<br/>        &quot;&quot;&quot;<br/>        Test to validate the output data.<br/>        &quot;&quot;&quot;<br/>        # Example data<br/>        processed_data = output_data<br/>        output_dir = &#x27;C:\\Apps\\retry_trial\\retry_trial\\TechM_Problem_Solution\\OutputDataSet&#x27;<br/>        out_file_path = os.path.join(output_dir, &#x27;odi.csv&#x27;)<br/>        # Read the processor&#x27;s output data<br/>        processor_output = pd.read_csv(out_file_path)<br/>    <br/>        output_data = validate_output(processed_data, processor_output)<br/>    <br/>        # Check schema<br/>&gt;       test_schema(output_data)<br/><br/>test_data_processor.py:40: <br/>_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ <br/><br/>output_data =   playerName eventType  age    runs  wickets   playerType Result<br/>0     ABC123       ODI   25  1000.0    171.0  All-Rou...78       ODI   45  4000.0    200.0  All-Rounder   PASS<br/>5    bnhg678      TEST   45   100.0    600.0       Bowler   FAIL<br/><br/>    def test_schema(output_data):<br/>        &quot;&quot;&quot;<br/>        Test to check if the output data has the correct schema.<br/>        &quot;&quot;&quot;<br/>        for column, dtype in expected_schema.items():<br/>            assert column in output_data.columns, f&quot;Missing column: {column}&quot;<br/>            print(column)<br/>            print(output_data[column].dtype)<br/>&gt;           assert output_data[column].dtype == dtype, f&quot;Incorrect dtype for column: {column}&quot;<br/><span class="error">E           AssertionError: Incorrect dtype for column: eventType</span><br/><span class="error">E           assert dtype(&#x27;O&#x27;) == &lt;class &#x27;str&#x27;&gt;</span><br/><span class="error">E            +  where dtype(&#x27;O&#x27;) = 0     ODI\n1     ODI\n2     ODI\n3    TEST\n4     ODI\n5    TEST\nName: eventType, dtype: object.dtype</span><br/><br/>test_data_processor.py:25: AssertionError<br/> -----------------------------Captured stdout setup------------------------------ <br/>  playerName    runs  wickets  age eventType   playerType
+0     ABC123  1000.0    171.0   25       ODI  All-Rounder
+1     CDE456   100.0    100.0   45      TEST       Bowler
+2     EFG789  2500.0     10.0   24       ODI      Batsman
+3      QRS67   100.0    100.0   24      TEST       Bowler
+4     WSY128    10.0     15.0   35       ODI       Bowler
+5     abc456    10.0      0.0   34       ODI       Bowler
+6     abc456  1000.0    600.0   34      TEST  All-Rounder
+7    bnhg678  4000.0    200.0   45       ODI  All-Rounder
+8    bnhg678   100.0    600.0   45      TEST       Bowler
+<br/> ------------------------------Captured stdout call------------------------------ <br/>  playerName    runs  wickets  age eventType   playerType
+0     ABC123  1000.0    171.0   25       ODI  All-Rounder
+1     CDE456   100.0    100.0   45      TEST       Bowler
+2     EFG789  2500.0     10.0   24       ODI      Batsman
+3      QRS67   100.0    100.0   24      TEST       Bowler
+4     WSY128    10.0     15.0   35       ODI       Bowler
+5     abc456    10.0      0.0   34       ODI       Bowler
+6     abc456  1000.0    600.0   34      TEST  All-Rounder
+7    bnhg678  4000.0    200.0   45       ODI  All-Rounder
+8    bnhg678   100.0    600.0   45      TEST       Bowler
+  eventType playerName  age  runs  wickets   playerType
+0       ODI     ABC123   25  1000      171  All-Rounder
+1       ODI     EFG789   24  2500       10      Batsman
+2       ODI     HIJ012   10   250       29       Bowler
+3       ODI     abc456   34    10        0       Bowler
+4       ODI    bnhg678   45  4000      200  All-Rounder
+  playerName  runs_processed  ...  wickets_expected  playerType_expected
+0     ABC123          1000.0  ...               171          All-Rounder
+1     EFG789          2500.0  ...                10              Batsman
+2     abc456            10.0  ...                 0               Bowler
+3     abc456          1000.0  ...                 0               Bowler
+4    bnhg678          4000.0  ...               200          All-Rounder
+5    bnhg678           100.0  ...               200          All-Rounder
+
+[6 rows x 11 columns]
+eventType
+object
+<br/></div></td></tr></tbody></table></body></html>

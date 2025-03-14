@@ -1,0 +1,19 @@
+# Pipeline code is configure for two needs as per README.md
+stages:
+  - mergedata_validate
+  - validate
+  
+mergedata_validate-job:
+  stage: mergedata_validate
+  environment: test
+  when: manual
+  script:
+    - python3 src/dataprocessor.py
+  
+validate-job:
+  stage: validate
+  script:
+    - mkdir test-report
+    - pip install pytest-bdd 
+    - pytest --junitxml=test-report/validation-report.xml -s src/test_dara_processor.py
+  

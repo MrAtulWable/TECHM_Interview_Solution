@@ -1,0 +1,7 @@
+playerName,eventType,age,runs,wickets,playerType,Result
+ABC123,ODI,25,1000.0,171.0,All-Rounder,PASS
+EFG789,ODI,24,2500.0,10.0,Batsman,PASS
+abc456,ODI,34,10.0,0.0,Bowler,PASS
+abc456,TEST,34,1000.0,600.0,All-Rounder,FAIL
+bnhg678,ODI,45,4000.0,200.0,All-Rounder,PASS
+bnhg678,TEST,45,100.0,600.0,Bowler,FAIL
